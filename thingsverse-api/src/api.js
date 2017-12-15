@@ -10,25 +10,28 @@ const config = require('./config')
 const AgentNotFoundError = require('./errors/agent-not-found-error')
 
 const api = asyncify(express.Router())
-let services, Agent, Metric
+let services
 
 api.use('*', async (req, res, next) => {
-  if (!services) {
-    debug('Connecting to database')
-    try {
-      services = await db(config)
-    } catch (err) {
-      return next(err)
+  debug('Connecting to database')
+  try {
+    if (!services) {
+      services = await db(config.db)
     }
-    Agent = services.Agent
-    Metric = services.Metric
+  } catch (err) {
+    return next(err)
   }
   next()
 })
 
-api.get('/agents', (req, res) => {
-  debug('A request has come to /agents')
-  res.send({})
+api.get('/agents', async (req, res, next) => {
+  try {
+    debug('A request has come to /agents')
+    const agents = await services.Agent.findConnected()
+    res.send(agents)
+  } catch (err) {
+    return next(err)
+  }
 })
 
 api.get('/agents/:uuid', (req, res, next) => {
